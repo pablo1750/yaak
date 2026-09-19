@@ -45,7 +45,7 @@ jobs:
           YAAK_TARGET_ARCH: x64
 
       - name: Build unsigned Windows bundle
-        run: npm run client:bundle
+        run: node scripts/run-build.mjs client --no-sign
         env:
           YAAK_TARGET_ARCH: x64
 
