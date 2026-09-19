@@ -57,6 +57,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $out | Out-Null
 
           $patterns = @(
+            'target\release\yaak-app-client.exe',
             'target\release\bundle\nsis\*.exe',
             'target\release\bundle\msi\*.msi'
           )
