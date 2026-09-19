@@ -73,7 +73,7 @@ jobs:
           if ($found.Count -eq 0) {
             Write-Host 'No installer bundle found. Showing bundle tree:'
             Get-ChildItem -Recurse -Path 'target\release\bundle' -ErrorAction SilentlyContinue
-            throw 'Yaak build completed but no Windows installer artifact was found.'
+            throw 'Yaak build completed but no Windows executable or installer artifact was found.'
           }
 
           Write-Host 'Collected artifacts:'
