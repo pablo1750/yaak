@@ -1,0 +1,88 @@
+name: Build Yaak Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Vite+ and Node
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: yaak-windows-local
+          cache-on-failure: true
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install JavaScript dependencies
+        run: vp install
+
+      - name: Bootstrap Yaak
+        run: npm run bootstrap
+        env:
+          YAAK_TARGET_ARCH: x64
+
+      - name: Build unsigned Windows bundle
+        run: npm run client:bundle
+        env:
+          YAAK_TARGET_ARCH: x64
+
+      - name: Collect Windows artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:RUNNER_TEMP 'yaak-windows'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          $patterns = @(
+            'target\release\bundle\nsis\*.exe',
+            'target\release\bundle\msi\*.msi'
+          )
+
+          $found = @()
+          foreach ($pattern in $patterns) {
+            $files = Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue
+            foreach ($file in $files) {
+              Copy-Item $file.FullName -Destination $out -Force
+              $found += $file.FullName
+            }
+          }
+
+          if ($found.Count -eq 0) {
+            Write-Host 'No installer bundle found. Showing bundle tree:'
+            Get-ChildItem -Recurse -Path 'target\release\bundle' -ErrorAction SilentlyContinue
+            throw 'Yaak build completed but no Windows installer artifact was found.'
+          }
+
+          Write-Host 'Collected artifacts:'
+          Get-ChildItem -Path $out
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaak-windows-x64
+          path: ${{ runner.temp }}\yaak-windows\*
+          retention-days: 14
+          if-no-files-found: error
